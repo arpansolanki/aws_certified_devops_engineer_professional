@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access into the WordPress web server
+    Type: AWS::EC2::KeyPair::KeyName
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0ff8a91507f77f867
+    us-west-2:
+      AMI: ami-0ad99772
+    eu-central-1:
+      AMI: ami-a058674b
+    ap-southeast-1:
+      AMI: ami-33f92051
+    ap-northeast-1:
+      AMI: ami-8e08a38f
+Resources:
+  Ec2Instance:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          SetupWebServer:       # The "default" configSet is used when cfn-init is called without -c option
+            - "InstallApache"
+            - "CreateFiles"
+            - "SetupService"
+        InstallApache:
+          packages:
+            yum:
+              httpd: []
+        CreateFiles:
+          files:
+            "/var/www/html/index.html":
+              content: "<html><body>Hello From Server  ${AWS::Region}</body></html>"
+              mode: '000644'
+              owner: root
+              group: root 
+        SetupService:      
+          services:
+            sysvinit:
+              httpd:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+        - !Ref InstanceHttpSecurityGroup
+      KeyName: !Ref KeyName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ex
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -s ${AWS::StackName} -r Ec2Instance -c SetupWebServer --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? -s ${AWS::StackName} -r EC2Instance --region ${AWS::Region}
+      ImageId: !FindInMap 
+        - RegionMap
+        - !Ref 'AWS::Region'
+        - AMI
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+  InstanceHttpSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0  
+Outputs:
+  WebUrl:
+    Description: This is our server url
+    Value: !Join 
+      - ''
+      - - 'http://'
+        - !GetAtt 
+          - Ec2Instance
+          - PublicDnsName

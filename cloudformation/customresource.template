@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  SQSOperationsFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role: arn:aws:iam::018734259996:role/LambdaCustomResource
+      Code:
+        ZipFile: !Sub |
+            var AWS = require('aws-sdk');
+            var sqs = new AWS.SQS();
+            var response = require('cfn-response');
+            var responseData = {};
+            exports.handler = function(event, context) {
+            var params = {
+            QueueName: "MyQueue"
+            };
+            var deleteParams = {
+            QueueUrl: 'https://sqs.us-east-1.amazonaws.com/018734259996/MyQueue' /* required */
+            };
+            if (event.RequestType == 'Delete') {
+            sqs.deleteQueue(deleteParams, function(err, data) {
+            if (err) {
+                console.log(err);
+            }
+            else {
+                console.log(data);
+            }
+            });
+            response.send(event, context, response.SUCCESS);
+            return;
+            }
+
+            sqs.createQueue(params, function(err, data) {
+            if (err) {
+            responseData = { 'status': 'Error' };
+
+            response.send(event, context, response.FAILED, responseData);
+
+            }
+            else {
+            responseData = { 'status': 'Success' };
+
+            response.send(event, context, response.SUCCESS, responseData);
+
+            }
+            });
+
+
+            }
+
+      Runtime: nodejs4.3
+  SQSFunction: 
+   Type: Custom::LambdaCallout
+   Properties:
+    ServiceToken: !GetAtt SQSOperationsFunction.Arn
+Outputs:
+   Results:
+    Description: Create SQS Result
+    Value: !GetAtt SQSFunction.status

@@ -1,0 +1,12 @@
+
+
+name: Arpan
+age: 99
+favoritefoods:
+  - pizza
+  - doughnut
+  - coke
+address:
+   city: Atlanta
+   state: Georgia
+   Country: USA
