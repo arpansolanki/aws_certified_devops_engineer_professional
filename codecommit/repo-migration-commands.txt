@@ -1,0 +1,10 @@
+#commands to migrate repo from github to codecommit
+Example migrate this repo into code commit https://github.com/arpansolanki/spring-boot-hello
+
+1)Mirror the github repo
+git clone --mirror https://https://github.com/arpansolanki/spring-boot-hello.git SpringBootHello
+
+2)Create a repo in code commit with name SpringBootHello and Copy the repo url 
+
+3)Push the code from step 1) into repo of step2). Change regin below
+git push https://git-codecommit.us-east-1.amazonaws.com/v1/repos/SpringBootHello --all
